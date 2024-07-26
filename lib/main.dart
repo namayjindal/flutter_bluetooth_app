@@ -21,18 +21,39 @@ class BluetoothScannerPage extends StatefulWidget {
 
 class _BluetoothScannerPageState extends State<BluetoothScannerPage> {
   static const platform = MethodChannel('com.namay/bluetooth');
-  List<Map<String, dynamic>> devices = [];
+  List<Map<String, String>> devices = [];
+  bool isScanning = false;
 
   Future<void> startScanning() async {
+    setState(() {
+      isScanning = true;
+      devices.clear();
+    });
+
     try {
-      final dynamic result = await platform.invokeMethod('startScanning');
-      if (result is Map) {
-        setState(() {
-          devices.add(Map<String, dynamic>.from(result));
-        });
-      }
+      final List<dynamic> result = await platform.invokeMethod('startScanning');
+      setState(() {
+        devices = result.map((device) => Map<String, String>.from(device)).toList();
+        isScanning = false;
+      });
     } on PlatformException catch (e) {
       print("Failed to scan: '${e.message}'.");
+      setState(() {
+        isScanning = false;
+      });
+    }
+  }
+
+  Future<void> connectToDevice(String deviceId) async {
+    try {
+      final result = await platform.invokeMethod('connectToDevice', {'id': deviceId});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connected to device: ${result['id']}')),
+      );
+    } on PlatformException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to connect: ${e.message}')),
+      );
     }
   }
 
@@ -43,8 +64,8 @@ class _BluetoothScannerPageState extends State<BluetoothScannerPage> {
       body: Column(
         children: [
           ElevatedButton(
-            onPressed: startScanning,
-            child: Text('Scan'),
+            onPressed: isScanning ? null : startScanning,
+            child: Text(isScanning ? 'Scanning...' : 'Scan'),
           ),
           Expanded(
             child: ListView.builder(
@@ -54,6 +75,7 @@ class _BluetoothScannerPageState extends State<BluetoothScannerPage> {
                 return ListTile(
                   title: Text(device['name'] ?? 'Unknown Device'),
                   subtitle: Text(device['id'] ?? 'No ID'),
+                  onTap: () => connectToDevice(device['id'] ?? ''),
                 );
               },
             ),

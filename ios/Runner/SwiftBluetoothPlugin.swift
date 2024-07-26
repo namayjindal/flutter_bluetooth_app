@@ -14,6 +14,13 @@ public class SwiftBluetoothPlugin: NSObject, FlutterPlugin {
         switch call.method {
         case "startScanning":
             bluetoothScanner.startScanning(result: result)
+        case "connectToDevice":
+            if let args = call.arguments as? [String: Any],
+               let deviceId = args["id"] as? String {
+                bluetoothScanner.connectToDevice(withId: deviceId, result: result)
+            } else {
+                result(FlutterError(code: "INVALID_ARGUMENT", message: "Invalid device ID", details: nil))
+            }
         default:
             result(FlutterMethodNotImplemented)
         }
